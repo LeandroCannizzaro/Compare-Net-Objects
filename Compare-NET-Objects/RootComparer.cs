@@ -5,120 +5,144 @@ using KellermanSoftware.CompareNetObjects.TypeComparers;
 
 namespace KellermanSoftware.CompareNetObjects
 {
-    /// <summary>
-    /// The base comparer which contains all the type comparers
-    /// </summary>
-    public class RootComparer : BaseComparer
-    {
-        #region Properties
+	/// <summary>
+	/// The base comparer which contains all the type comparers
+	/// </summary>
+	public class RootComparer : BaseComparer
+	{
+		#region Properties
 
 
-        /// <summary>
-        /// A list of the type comparers
-        /// </summary>
-        internal List<BaseTypeComparer> TypeComparers { get; set; }
-        #endregion
+		/// <summary>
+		/// A list of the type comparers
+		/// </summary>
+		internal List<BaseTypeComparer> TypeComparers { get; set; }
+		#endregion
 
-        #region Methods
+		#region Methods
 
-        /// <summary>
-        /// Compare two objects
-        /// </summary>
-        public bool Compare(CompareParms parms)
-        {
-            try
-            {
-                if (parms.Object1 == null && parms.Object2 == null)
-                    return true;
+		/// <summary>
+		/// Compare two objects
+		/// </summary>
+		public bool Compare(CompareParms parms)
+		{
+			try
+			{
+				if (parms.Object1 == null && parms.Object2 == null)
+					return true;
 
-                Type t1 = parms.Object1 != null ? parms.Object1.GetType() : null;
-                Type t2 = parms.Object2 != null ? parms.Object2.GetType() : null;
+				Type t1 = parms.Object1 != null ? parms.Object1.GetType() : null;
+				Type t2 = parms.Object2 != null ? parms.Object2.GetType() : null;
 
-                if (ExcludeLogic.ShouldExcludeType(parms.Config, t1, t2))
-                    return true;
+				if (ExcludeLogic.ShouldExcludeType(parms.Config, t1, t2))
+					return true;
 
-                BaseTypeComparer customComparer = parms.Config.CustomComparers.FirstOrDefault(o => o.IsTypeMatch(t1, t2));
+				BaseTypeComparer customComparer = parms.Config.CustomComparers.FirstOrDefault(o => o.IsTypeMatch(t1, t2));
 
-                if (customComparer != null)
-                {
-                    customComparer.CompareType(parms);
-                }
-                else if (parms.CustomPropertyComparer != null)
-                {
-                    parms.CustomPropertyComparer.CompareType(parms);
-                }
-                else
-                {
-                    BaseTypeComparer typeComparer = TypeComparers.FirstOrDefault(o => o.IsTypeMatch(t1, t2));
+				if (customComparer != null)
+				{
+					customComparer.CompareType(parms);
+				}
+				else if (parms.CustomPropertyComparer != null)
+				{
+					parms.CustomPropertyComparer.CompareType(parms);
+				}
+				else
+				{
+					BaseTypeComparer typeComparer = TypeComparers.FirstOrDefault(o => o.IsTypeMatch(t1, t2));
 
-                    if (typeComparer != null)
-                    {
-                        if (parms.Config.IgnoreObjectTypes || !TypesDifferent(parms, t1, t2))
-                        {
-                            typeComparer.CompareType(parms);
-                        }
-                    }
-                    else
-                    {
-                        if (EitherObjectIsNull(parms)) return false;
+					if (typeComparer != null)
+					{
+						//if (parms.Config.IgnoreObjectTypes)
+						{
+							if (TypesDifferent(parms, t1, t2))
+							{
+								//typeComparer.CompareType(parms);
+							}
+							else
+							{
+								typeComparer.CompareType(parms);
+							}
+						}
+						//else
+						//{
 
-                        if (!parms.Config.IgnoreObjectTypes && t1 != null)
-                            throw new NotSupportedException("Cannot compare object of type " + t1.Name);
-                    }
-                }
+						//}
+					}
+					else
+					{
+						if (EitherObjectIsNull(parms)) return false;
 
-            }
-            catch (ObjectDisposedException)
-            {
-                if (!parms.Config.IgnoreObjectDisposedException)
-                    throw;
+						if (!parms.Config.IgnoreObjectTypes && t1 != null)
+							throw new NotSupportedException("Cannot compare object of type " + t1.Name);
+					}
+				}
 
-                return true;
-            }
+			}
+			catch (ObjectDisposedException)
+			{
+				if (!parms.Config.IgnoreObjectDisposedException)
+					throw;
 
-            return parms.Result.AreEqual;
-        }
+				return true;
+			}
 
-        private bool TypesDifferent(CompareParms parms, Type t1, Type t2)
-        {
-            //Objects must be the same type and not be null
-            if (!parms.Config.IgnoreObjectTypes
-                && parms.Object1 != null 
-                && parms.Object2 != null 
-                && t1 != t2)
-            {
-                Difference difference = new Difference
-                {
-                    ParentObject1 = parms.ParentObject1,
-                    ParentObject2 = parms.ParentObject2,
-                    PropertyName = parms.BreadCrumb,
-                    Object1Value = t1.FullName,
-                    Object2Value = t2.FullName,
-                    ChildPropertyName = "GetType()",
-                    MessagePrefix = "Different Types",
-                    Object1 = parms.Object1,
-                    Object2 = parms.Object2
-                };
+			return parms.Result.AreEqual;
+		}
 
-                AddDifference(parms.Result, difference);
-                return true;
-            }
+		private bool TypesDifferent(CompareParms parms, Type t1, Type t2)
+		{
+			//Objects must be the same type and not be null
+			//if (parms.Config.IgnoreObjectTypes)
+			//{
+			//	return false;
+			//}
+			//else
+			{
+				if (parms.Object1 != null
+					&& parms.Object2 != null
+					&& t1 != t2)
+				{
+					if (!parms.Config.IgnoreObjectTypes)
+					{
+						Difference difference = new Difference
+						{
+							ParentObject1 = parms.ParentObject1,
+							ParentObject2 = parms.ParentObject2,
+							PropertyName = parms.BreadCrumb,
+							Object1Value = t1.FullName,
+							Object2Value = t2.FullName,
+							ChildPropertyName = "GetType()",
+							MessagePrefix = "Different Types",
+							Object1 = parms.Object1,
+							Object2 = parms.Object2
+						};
 
-            return false;
-        }
+						AddDifference(parms.Result, difference);
+					}
+					return true;
+				}
 
-        private bool EitherObjectIsNull(CompareParms parms)
-        {
-            //Check if one of them is null
-            if (parms.Object1 == null || parms.Object2 == null)
-            {
-                AddDifference(parms);
-                return true;
-            }
+				return false;
+			}
+		}
 
-            return false;
-        }
+		private bool EitherObjectIsNull(CompareParms parms)
+		{
+			if (parms.Object1Type.IsValueType || parms.Object2Type.IsValueType)
+			{
+				return false;
+			}
+			//Check if one of them is null
+			if (parms.Object1 == null || parms.Object2 == null)
+			{
+				AddDifference(parms);
+				return true;
+			}
 
-        #endregion
-    }
+			return false;
+		}
+
+		#endregion
+	}
 }
